@@ -44,3 +44,6 @@ streamlit.dataframe(my_data_rows)
 streamlit.header("More Fruityvice Fruit Advice to add fruit of your choice...")
 add_fruit_choice = streamlit.text_input('What fruit would you like to add information about?','Kiwi')
 streamlit.write('The user wanted to add this fruit: ', add_fruit_choice)
+
+my_cur.execute("insert into PC_RIVERY_DB.PUBLIC.FRUIT_LOAD_LIST values ('test')");
+
