@@ -1,0 +1,139 @@
+-- setup
+--check warehouse
+select current_region();
+
+create database util_db;
+
+use role accountadmin;
+
+create or replace api integration dora_api_integration
+api_provider = aws_api_gateway
+api_aws_role_arn = 'arn:aws:iam::321463406630:role/snowflakeLearnerAssumedRole'
+enabled = true
+api_allowed_prefixes = ('https://awy6hshxy4.execute-api.us-west-2.amazonaws.com/dev/edu_dora');
+
+create or replace external function util_db.public.grader(        
+ step varchar     
+ , passed boolean     
+ , actual integer     
+ , expected integer    
+ , description varchar) 
+ returns variant 
+ api_integration = dora_api_integration 
+ context_headers = (current_timestamp,current_account, current_statement) 
+ as 'https://awy6hshxy4.execute-api.us-west-2.amazonaws.com/dev/edu_dora/grader'  
+;  
+create or replace external function util_db.public.greeting(
+      email varchar
+    , firstname varchar
+    , middlename varchar
+    , lastname varchar)
+returns variant
+api_integration = dora_api_integration
+context_headers = (current_timestamp,current_account, current_statement) 
+as 'https://awy6hshxy4.execute-api.us-west-2.amazonaws.com/dev/edu_dora/greeting'
+;
+
+select util_db.public.greeting('gopalwun@gmail.com', 'gopal', 'v', 'wunnava');
+
+select util_db.public.grader(step, (actual = expected), actual, expected, description) as graded_results from
+(SELECT 
+ 'DORA_IS_WORKING' as step
+ ,(select 123 ) as actual
+ ,123 as expected
+ ,'Dora is working!' as description
+); 
+
+
+
+select current_account();
+
+--DW47757
+
+
+
+create database AGS_GAME_AUDIENCE;
+
+drop schema AGS_GAME_AUDIENCE.public;
+
+create schema AGS_GAME_AUDIENCE.raw;
+
+create table AGS_GAME_AUDIENCE.raw.GAME_LOGS(
+   RAW_LOG VARIANT
+    -- , <col2_name> <col2_type>
+    -- supported types: https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
+    );
+    -- comment = '<comment>';
+
+CREATE STAGE uni_kishore
+url = 's3://uni-kishore';
+
+list @uni_kishore/kickoff;
+
+CREATE OR REPLACE FILE FORMAT AGS_GAME_AUDIENCE.RAW.FF_JSON_LOGS
+  TYPE = 'JSON'
+  COMPRESSION = 'AUTO' 
+  strip_outer_array = true
+  TRIM_SPACE = FALSE 
+  DATE_FORMAT = 'AUTO' 
+  TIMESTAMP_FORMAT = 'AUTO' 
+  NULL_IF = ('\\N');
+
+
+SELECT $1
+FROM @uni_kishore/kickoff
+(file_format => FF_JSON_LOGS);
+
+COPY INTO AGS_GAME_AUDIENCE.raw.GAME_LOGS
+FROM @uni_kishore/kickoff
+file_format = (FORMAT_NAME = FF_JSON_LOGS);
+
+
+select 
+RAW_LOG:agent::text as AGENT, 
+RAW_LOG:user_login::text as USER_LOGIN, 
+RAW_LOG:user_event::text as USER_EVENT, 
+RAW_LOG:datetime_iso8601::TIMESTAMP_NTZ as datetime_iso8601,
+RAW_LOG
+from GAME_LOGS;
+
+select 
+RAW_LOG:agent::text as AGENT, 
+RAW_LOG:user_login::text as USER_LOGIN, 
+RAW_LOG:user_event::text as USER_EVENT, 
+RAW_LOG:datetime_iso8601::TIMESTAMP_NTZ as datetime_iso8601,
+RAW_LOG:datetime_iso8601::TIMESTAMP_LTZ as datetime_iso8601_LTC,
+RAW_LOG:datetime_iso8601::TIMESTAMP_TZ as datetime_iso8601_TZ,
+RAW_LOG
+from GAME_LOGS;
+
+
+create or replace view AGS_GAME_AUDIENCE.raw.logs
+as
+select 
+RAW_LOG:agent::text as AGENT, 
+RAW_LOG:user_login::text as USER_LOGIN, 
+RAW_LOG:user_event::text as USER_EVENT, 
+RAW_LOG:datetime_iso8601::TIMESTAMP_NTZ as datetime_iso8601,
+RAW_LOG
+from GAME_LOGS;
+
+select * from AGS_GAME_AUDIENCE.raw.logs;
+
+
+-- DO NOT EDIT THIS CODE
+select GRADER(step, (actual = expected), actual, expected, description) as graded_results from
+(
+ SELECT
+ 'DNGW01' as step
+  ,(
+      select count(*)  
+      from ags_game_audience.raw.logs
+      where is_timestamp_ntz(to_variant(datetime_iso8601))= TRUE 
+   ) as actual
+, 250 as expected
+, 'Project DB and Log File Set Up Correctly' as description
+); 
+
+
+
